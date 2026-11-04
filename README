@@ -1,0 +1,6 @@
+Meowkov Sentence Generator
+==========================
+
+This program generates a sentence's worth of "real-looking" text using a Markov model and sample textual training input.
+
+Usage: sentence-generator DATA CHAIN_LENGTH

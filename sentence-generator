@@ -1,0 +1,85 @@
+#!/usr/bin/python3
+
+import re
+import random
+import sys
+
+# These mappings can get fairly large -- they're stored globally to
+# save copying time.
+
+# (tuple of words) -> [list of words appearing after the tuple, with repeats]
+# Example entry:
+#    ('eyes', 'turned') => ['to', 'to', 'from']
+mapping = {}
+
+# Contains the set of words that can start sentences
+starts = []
+
+# Returns the contents of the file, split into a list of words and
+# (some) punctuation.
+# We want to be able to compare words independent of their capitalization.
+def wordlist(filename):
+    f = open(filename, 'r')
+    wordlist = [w.lower() for w in re.findall(r"[\w']+|[\n,!?;]", f.read())]
+    f.close()
+    return wordlist
+
+# Self-explanatory -- adds "word" to the "mapping" dict under "history".
+# mapping matches each word to a list of possible next words.
+# Given history = ["the", "rain", "in"] and word = "Spain", we add "Spain" to
+# the entries for ["the", "rain", "in"], ["rain", "in"], and ["in"].
+def addItemToMapping(history, word):
+    while len(history) > 0:
+        mapping.setdefault(tuple(history), []).append(word)
+        history = history[1:]
+
+# Building the mapping.
+def buildMapping(wordlist, markovLength):
+    starts.append(wordlist [0])
+    for i in range(1, len(wordlist) - 1):
+        history = wordlist[max(0, i - markovLength + 1) : i + 1]
+        follow = wordlist[i + 1]
+        # if the last elt was a period, add the next word to the start list
+        if history[-1] == "\n" and follow not in "\n,!?;":
+            starts.append(follow)
+        addItemToMapping(history, follow)
+
+# Returns the next word in the sentence (chosen randomly),
+# given the previous ones.
+def next(prevList):
+    # Shorten prevList until it's in mapping
+    while tuple(prevList) not in mapping:
+        prevList.pop(0)
+    # Get a random word from the mapping, given prevList
+    return random.choice(mapping[tuple(prevList)])
+
+def genSentence(markovLength):
+    # Start with a random "starting word"
+    curr = random.choice(starts)
+    sent = curr
+    prevList = [curr]
+    # Keep adding words until we hit a period
+    while (curr not in "\n"):
+        curr = next(prevList)
+        prevList.append(curr)
+        # if the prevList has gotten too long, trim it
+        if len(prevList) > markovLength:
+            prevList.pop(0)
+        if (curr not in "\n,!?;"):
+            sent += " " # Add spaces between words (but not punctuation)
+        sent += curr
+    return sent
+
+def main():
+    if len(sys.argv) < 2:
+        sys.stderr.write('Usage: ' + sys.argv [0] + ' text_source [chain_length=1]\n')
+        sys.exit(1)
+
+    filename = sys.argv[1]
+    markovLength = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+
+    buildMapping(wordlist(filename), markovLength)
+    print(genSentence(markovLength), end="")
+
+if __name__ == "__main__":
+    main()
